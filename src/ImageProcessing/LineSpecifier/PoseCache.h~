@@ -1,0 +1,225 @@
+/**
+ * PoseCache.h
+ *
+ *  Created on: 15.02.2016
+ *      Author: schoen
+ */
+
+#ifndef POSECACHE_H_
+#define POSECACHE_H_
+
+#include <adtf_platform_inc.h>
+#include <adtf_plugin_sdk.h>
+
+using namespace adtf;
+
+#include <iostream>
+#include "CVMath.h"
+#include "Pose3D.h"
+
+#include "ImageProcessingUtils.h"
+
+struct CarPose {
+	cv::Point2f position;
+	tFloat32 yaw;
+	tTimeStamp adtfTime;
+	tUInt32 arduinoTime;
+
+	CarPose () {
+		this->yaw = 0;
+		this->adtfTime = 0;
+		this->arduinoTime = 0;
+	}
+
+	CarPose (cv::Point2f pose, tFloat32 yaw, tTimeStamp adtfTime, tUInt32 arduinoTime) {
+		this->position = pose;
+		this->yaw = yaw;
+		this->adtfTime = adtfTime;
+		this->arduinoTime = arduinoTime;
+	}
+};
+
+class PoseCache {
+	std::deque<CarPose> queue;
+
+	tInt64 adtfArduinoTimeDiff;
+
+	/**
+	 * Synchronization
+	 */
+	cCriticalSection criticalSection;
+public:
+
+	bool IsEmpty() {
+		__synchronized_obj(criticalSection);
+		return queue.empty();
+	}
+
+	void PushFront(CarPose p) {
+		__synchronized_obj(criticalSection);
+
+		size_t size = queue.size();
+		if(size == 0) {
+			adtfArduinoTimeDiff = p.adtfTime - p.arduinoTime;
+			queue.push_front(p);
+		} else {
+			CarPose last = queue.front();
+			if(last.arduinoTime < p.arduinoTime) {
+				//std::cout << "LineSpec: pose arduino " << p.arduinoTime << std::endl;
+				adtfArduinoTimeDiff = 0.3*(p.adtfTime - p.arduinoTime) + 0.7 * adtfArduinoTimeDiff;
+				queue.push_front(p);
+			} else if(last.arduinoTime > p.arduinoTime) {
+				tUInt32 diff = last.arduinoTime - p.arduinoTime;
+
+				if(diff > 4294917296) { //256*256*256*256 - 50000 [microseconds]
+					//time overflow
+					adtfArduinoTimeDiff = 0.3*(p.adtfTime - p.arduinoTime) + 0.7 * (adtfArduinoTimeDiff + 4294967296);
+					queue.push_front(p);
+					//std::cout << "LineSpec: time overflow " << p.arduinoTime << std::endl;
+				} else {
+					//reset
+					adtfArduinoTimeDiff = p.adtfTime - p.arduinoTime;
+					queue.push_front(p);
+					//std::cout << "LineSpec: time reset " << p.arduinoTime << std::endl;
+				}
+			}
+		}
+
+		if(size > 20) {
+			queue.resize(15);
+		}
+
+		//std::cout << "LineSpec: adtfArduinoTimeDiff " << adtfArduinoTimeDiff << std::endl;
+
+	}
+
+	CarPose GetCurrent() {
+		__synchronized_obj(criticalSection);
+		return queue.front();
+	}
+
+	CarPose GetLast() {
+		__synchronized_obj(criticalSection);
+		if(queue.size() > 1) {
+			return queue.at(1);
+		}
+		return CarPose();
+	}
+
+	tFloat32 GetLastDistance() {
+		__synchronized_obj(criticalSection);
+		if(queue.size() > 1) {
+			return cv::norm(queue.at(0).position - queue.at(1).position);
+		} else {
+			return -1;
+		}
+	}
+
+	CarPose GetGlobalPose(cv::Point2f position, tFloat32 yaw) {
+		__synchronized_obj(criticalSection);
+
+		if(queue.size() > 0) {
+			CarPose car = queue.front();
+			CarPose point;
+			point.position = CVMath::RotateCW(position, -car.yaw) + car.position;
+			point.yaw = car.yaw + yaw;
+			return point;
+		} else {
+			return CarPose();
+		}
+	}
+
+	/**
+	 *
+	 * @param poses
+	 * @param frameCoord
+	 * @return local position
+	 */
+	cv::Point2f InterpolatePoses(deque<Pose3D> poses, cv::Point2f frameCoord) {
+		if (poses.size() < 2 || queue.size() < 2) {
+			return cv::Point2f(0,0);
+		}
+
+		int countPoints = 0;
+		cv::Point2f mean;
+
+		/*
+		for(size_t i = 0; i < queue.size(); i++) {
+			std::cout << "car pose " << i << " " << queue[i].position.x << " " << queue[i].position.y << "yaw " << queue[i].yaw  << " " << queue[i].adtfTime << std::endl;
+		}
+		*/
+
+		for(size_t i = 0; i < poses.size(); i++) {
+			if(poses[i].valid) {
+				cv::Point2f stopPosition = ImageUtils::ConvertToWorldCoordinates(poses[i].pos, frameCoord);
+
+				std::cout << "local pose " << i << " " << stopPosition.x << " " <<stopPosition.y  << " " << poses[i].time << std::endl;
+
+				__synchronized_obj(criticalSection);
+
+				size_t k = 0;
+				while (k + 1 < queue.size()) {
+					CarPose last = queue.at(k);
+					CarPose preLast = queue.at(k+1);
+					tTimeStamp time = poses[i].time;
+
+					if(time > last.adtfTime) {
+						break;
+					}
+
+					if(preLast.adtfTime <= time && time <= last.adtfTime) {
+						tTimeStamp timeDiffDivisor = last.adtfTime - preLast.adtfTime;
+						cv::Point2f positionDiff = last.position - preLast.position;
+
+						float yawDiff = last.yaw - preLast.yaw;
+						if(yawDiff > 2*CV_PI) {
+							yawDiff -= 2*CV_PI;
+						} else if(yawDiff < -2*CV_PI) {
+							yawDiff += 2*CV_PI;
+						}
+
+						tTimeStamp timeDiff = time - preLast.adtfTime;
+
+						CarPose inter = CarPose(preLast.position + (float(timeDiff) / timeDiffDivisor) * positionDiff, preLast.yaw + (yawDiff * timeDiff) / timeDiffDivisor, time, true);
+
+						cv::Point2f pos = CVMath::RotateCW(stopPosition, -inter.yaw) + inter.position;
+						mean += pos;
+						countPoints++;
+
+						std::cout << "car pose " << i << " " << inter.position.x << " " << inter.position.y  << " yaw " <<inter.yaw << std::endl;
+						std::cout << "global pose " << i << " " << pos.x << " " <<pos.y << std::endl;
+						break;
+					}
+
+					k++;
+
+				}
+
+				k-= 2;
+				if(k < 0) {
+					k = 0;
+				}
+			}
+		}
+
+		if (countPoints > 0) {
+			mean = mean / countPoints;
+
+			__synchronized_obj(criticalSection);
+
+			return CVMath::RotateCW(mean - queue.front().position, queue.front().yaw);
+		} else {
+			return cv::Point2f(0,0);
+		}
+	}
+
+	PoseCache() {
+		adtfArduinoTimeDiff = 0;
+	}
+
+	virtual ~PoseCache() {
+
+	}
+};
+
+#endif /* POSECACHE_H_ */

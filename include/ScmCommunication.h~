@@ -1,0 +1,253 @@
+/**
+Copyright (c) 
+Audi Autonomous Driving Cup. All rights reserved. Team FAUtonOHM.
+ 
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ 
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3.  All advertising materials mentioning features or use of this software must display the following acknowledgement: This product includes software developed by the Audi AG and its contributors for Audi Autonomous Driving Cup.
+4.  Neither the name of Audi nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ 
+THIS SOFTWARE IS PROVIDED BY AUDI AG AND CONTRIBUTORS AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL AUDI AG OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+**********************************************************************************
+* $Author:: mahill $  $Date:: 2016-01-30 13:49:07#$ $Rev:: 0.0.3  $Team FAUtonOHM $
+**********************************************************************************/
+
+#ifndef _SCMCOMMUNICATION_ENUMS
+#define _SCMCOMMUNICATION_ENUMS
+
+/* enum for communication between filter and StateControlManagement */
+enum FilterIDs{
+	/* F_ stands for Filter */
+	F_LINE_SPECIFIER = 1,
+	F_FOLLOW_PATH = 2,
+	F_ROAD_SIGNS = 3,
+	F_TIMER = 4,
+	F_FLAG_FILTER = 5,
+	F_OBSTACLE_DETECTION = 6,
+	F_LIGHT_FILTER = 7,
+	F_STOP_ACTION = 8,
+	F_JURY_COMMUNICATION = 10
+};
+
+enum FeedbackStatus{
+	/** FB_ stands for FeedBack **/
+	/* LineSpecifier: */
+	FB_LS_STOPLINE = 1000,
+	/* Different Activation Modes of LineSpecifier*/
+	FB_LS_STOPPED = 1011,
+	FB_LS_SLOW = 1021,
+	FB_LS_NORMAL = 1031,
+	/* Type of spot the car is currently parked in */
+	FB_LS_IN_PARKSPOT_TRANS = 1101 , //
+	FB_LS_IN_PARKSPOT_LONG = 1102,
+	/* Spot that was detected before parking maneuver */
+	FB_LS_PARKING_TRANS = 1121,
+	FB_LS_PARKING_LONG = 1122,
+	FB_LS_NO_PARKING = 1123,
+
+	/* FollowPath: */
+	/* Car reached certain point, given by xy-coordinates */
+	FB_FP_REACHED_POINT = 2011,
+	/* Car completed corresponding turn successfully*/
+	FB_FP_LEFT_TURN = 2021,
+	FB_FP_RIGHT_TURN = 2031,
+	/* Car completed corresponding parking maneuver successfully*/
+	FB_FP_PARKING_TRANS = 2041,
+	FB_FP_PARKING_OUT_TRANS_RIGHT = 2051,
+	FB_FP_PARKING_OUT_TRANS_LEFT = 2061,
+	FB_FP_PARKING_LONG = 2071,
+	FB_FP_PARKING_OUT_LONG = 2081,
+	/* Filter stopped/paused or was activated again*/
+	FB_FP_STOPPED = 2101,
+	FB_FP_CONTINUED = 2111,
+	/* Get last completed parking maneuver */
+	FB_FP_PARKING_STATUS_NO_PARKING = 2151,
+	FB_FP_PARKING_STATUS_PARALLEL = 2152,
+	FB_FP_PARKING_STATUS_TRANSVERSE = 2153,
+
+	/* RoadSign: */
+	FB_RS_UNMARKEDINTERSECTION = 3000,
+	FB_RS_STOPANDGIVEWAY = 3001,
+	FB_RS_PARKINGAREA = 3002,
+	FB_RS_HAVEWAY = 3003,
+	FB_RS_AHEADONLY = 3004,
+	FB_RS_GIVEWAY = 3005,
+	FB_RS_PEDESTRIANCROSSING = 3006,
+	FB_RS_ROUNDABOUT = 3007,
+	FB_RS_NOOVERTAKING = 3008,
+	FB_RS_NOENTRYVEHICULARTRAFFIC = 3009,
+	FB_RS_ONEWAYSTREET = 3011,
+
+	/* TimerFilter: */
+	FB_TF_FINISHED = 4001,
+
+	/* FlagFilter: */
+
+	/* ObstacleDetection: */
+
+	/* LightFilter: */
+	/* Status from LightFilter = sent Action Command */
+
+
+	/* StopAction */
+	FB_SA_STOPPED = 8011,
+
+
+	/* JuryCommunication */
+	FB_JURY_ALIVE_AND_READY = 10991,
+	/* Maneuver relevant feedback */
+	FB_JURY_MAN_LEFT = 10011,
+	FB_JURY_MAN_RIGHT = 10021,
+	FB_JURY_MAN_STRAIGHT = 10031,
+	FB_JURY_MAN_PARALLEL_PARKING = 10041,
+	FB_JURY_MAN_CROSS_PARKING = 10051,
+	FB_JURY_MAN_PULL_OUT_LEFT = 10061,
+	FB_JURY_MAN_PULL_OUT_RIGHT = 10071,
+	FB_JURY_NO_MAN_REMAINING = 10091,
+	/* Communication & carState relevant feedback */
+	//FB_JURY_CARSTATE_STARTUP = 10311,
+	//FB_JURY_CARSTATE_READY = 10321,
+	//FB_JURY_CARSTATE_RUNNING = 10331,
+	//FB_JURY_CARSTATE_COMPLETE = 10341,
+	FB_JURY_CARSTATE_ERROR_SECTION_RESET = 10351,
+	/* Waiting for commands sent from jury */
+	//FB_JURY_COMMAND_RECEIVED_GETREADY = 10510,
+	FB_JURY_COMMAND_RECEIVED_START = 10521,
+	FB_JURY_COMMAND_RECEIVED_STOP = 10531
+};
+
+enum FeedbackCommand{
+	/* Increase step by certain number */
+	C_STEP_PLUS_COMMAND_BEGIN = 0,
+	C_STEP_PLUS_ONE = 1,
+	C_STEP_PLUS_TWO = 2,
+	C_STEP_PLUS_THREE = 3,
+
+
+	/* Jump to certain step */
+	C_STEP_JUMP_COMMAND_BEGIN = 100,
+	C_STEP_JUMP_TO_ZERO = 100,
+	C_STEP_JUMP_TO_ONE = 101,
+	C_STEP_JUMP_TO_TWO = 102,
+	C_STEP_JUMP_TO_THREE = 103,
+	C_STEP_JUMP_TO_FOUR = 104,
+	C_STEP_JUMP_TO_FIVE = 105,
+	C_STEP_JUMP_TO_SIX = 106,
+	C_STEP_JUMP_TO_SEVEN = 107,
+	C_STEP_JUMP_TO_EIGHT = 108,
+	C_STEP_JUMP_TO_NINE = 109,
+	C_STEP_JUMP_TO_TEN  = 110,
+	C_STEP_JUMP_TO_ELEVEN = 111,
+	C_STEP_JUMP_TO_TWELFE  = 112,
+	C_STEP_JUMP_TO_THIRTEEN = 113,
+	C_STEP_JUMP_TO_FOURTEEN = 114,
+	C_STEP_JUMP_TO_FIFTEEN = 115,
+
+	/* Jump to certain maneuver */
+	C_MAN_JUMP_COMMAND_BEGIN = 200,
+	C_MAN_JUMP_TO_ZERO = 200,
+	C_MAN_JUMP_TO_ONE = 201,
+	C_MAN_JUMP_TO_TWO = 202,
+	C_MAN_JUMP_TO_THREE = 203,
+	C_MAN_JUMP_TO_FOUR = 204,
+	C_MAN_JUMP_TO_FIVE = 205,
+	C_MAN_JUMP_TO_SIX = 206,
+	C_MAN_JUMP_TO_SEVEN = 207,
+	C_MAN_JUMP_TO_EIGHT = 208,
+	C_MAN_JUMP_TO_NINE = 209,
+	C_MAN_JUMP_TO_TEN  = 210,
+	C_MAN_JUMP_TO_ELEVEN = 211,
+	C_MAN_JUMP_TO_TWELFE  = 212,
+	C_MAN_JUMP_TO_THIRTEEN = 213,
+	C_MAN_JUMP_TO_FOURTEEN = 214,
+	C_MAN_JUMP_TO_FIFTEEN = 215,
+
+	/* Interval for maneuver jump commands ends at 300 */
+	C_MAN_JUMP_COMMAND_END = 300
+};
+
+enum ActionCommand{
+	/* LineSpecifier: */
+	/* Deactivates output, lane detection still running */
+	AC_LS_STOP = 1010,
+	/* speed output slow */
+	AC_LS_SLOW = 1020,
+	/* speed output normal */
+	AC_LS_NORMAL = 1030,
+
+	/* FollowPath: */
+	/* Car should drive to certain point, given by xy-coordinates */
+	AC_FP_GOTO_XY = 2010,
+	/* Car should turn in given direction, activate corresponding turn-trajectory */
+	AC_FP_LEFT_TURN = 2020,
+	AC_FP_RIGHT_TURN = 2030,
+	/* Car should execute given parking maneuver, activate corresponding park-trajectory*/
+	AC_FP_PARKING_TRANS = 2040,
+	AC_FP_PARKING_OUT_TRANS_RIGHT = 2050,
+	AC_FP_PARKING_OUT_TRANS_LEFT = 2060,
+	AC_FP_PARKING_LONG = 2070,
+	AC_FP_PARKING_OUT_LONG = 2080,
+	/* Commands to stop/pause Filter and activate again*/
+	AC_FP_STOP = 2100,
+	AC_FP_CONTINUE = 2110,
+	/* Get last completed parking maneuver */
+	AC_FP_GET_PARKING_STATUS = 2150,
+
+	/* RoadSign: */
+	AC_RS_START = 3100,
+
+	/* TimerFilter: */
+	AC_TF_WAIT_ONE_SEC = 4010,
+	AC_TF_WAIT_TWO_SEC = 4020,
+	AC_TF_WAIT_THREE_SEC = 4030,
+	AC_TF_WAIT_FOUR_SEC = 4040,
+	AC_TF_WAIT_FIVE_SEC = 4050,
+	AC_TF_WAIT_SIX_SEC = 4060,
+	AC_TF_WAIT_SEVEN_SEC = 4070,
+	AC_TF_WAIT_EIGHT_SEC = 4080,
+	AC_TF_WAIT_NINE_SEC = 4090,
+
+	/* LightControl */
+	/* Light Commands: 7000 - 7999
+	 * 7 a b c
+	 * a	Head Light 0: no change, 1: disable, 2: enable
+	 * b	Reverse Light: 0: no change, 1: disable, 2: enable
+	 * c	Turn Lights: 0: no change, 1: disable, 2: left turn, 3: right turn, 4: hazard */
+
+	AC_LC_HEAD_LIGHT_ON = 7200,
+	AC_LC_HEAD_LIGHT_OFF = 7100,
+	AC_LC_RERVERSE_LIGHT_ON = 7020,
+	AC_LC_RERVERSE_LIGHT_OFF = 7010,
+	AC_LC_TURN_LEFT = 7002,
+	AC_LC_TURN_RIGHT = 7003,
+	AC_LC_TURN_DISABLE = 7001,
+	AC_LC_HAZARD_LIGHT_ON = 7004,
+	AC_LC_HAZARD_LIGHT_OFF = 7001,
+
+
+	/* StopAction */
+	AC_SA_STOP_CAR = 8010,
+
+	/* JuryCommunication */
+	AC_JURY_ALIVE_AND_READY = 10990,
+	/* Maneuver relevant actions */
+	AC_JURY_MAN_GET_FIRST = 10100,
+	AC_JURY_MAN_FINISHED_GET_NEXT = 10120,
+	/* Communication & carState relevant actions */
+	//AC_JURY_SET_CARSTATE_STARTUP = 10310,
+	//AC_JURY_SET_CARSTATE_READY = 10320,
+	//AC_JURY_SET_CARSTATE_RUNNING = 10330,
+	//AC_JURY_SET_CARSTATE_COMPLETE = 10340,
+	AC_JURY_SET_CARSTATE_ERROR_AND_RESET = 10350,
+	/* Waiting for commands sent from jury */
+	//AC_JURY_WAIT_FOR_COMMAND_GETREADY = 10510,
+	AC_JURY_WAIT_FOR_COMMAND_START = 10520,
+	AC_JURY_WAIT_FOR_COMMAND_STOP = 10530
+};
+
+
+#endif // _SCMCOMMUNICATION_ENUMS

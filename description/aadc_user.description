@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<adtf:ddl xmlns:adtf="adtf">
+ <header>
+  <language_version>3.00</language_version>
+  <author>FAUtonOHM</author>
+  <date_creation>11.01.2016</date_creation>
+  <date_change>11.01.2016</date_change>
+  <description>AADC User Specific Description File</description>
+ </header>
+ <units />
+ <enums />
+ <structs>
+  <struct alignment="1" name="tPoseStruct" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="ui32ArduinoTimestamp" type="tUInt32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" name="f32_x" type="tFloat32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="8" name="f32_y" type="tFloat32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="12" name="f32_yaw" type="tFloat32" />
+  </struct>
+  <struct alignment="1" name="tFeedbackStruct" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="filterID" type="tUInt32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" name="status" type="tUInt32" />
+  </struct>
+  <struct alignment="1" name="tActionSub" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="enabled" type="tBool" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="1" name="started" type="tBool" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="2" name="command" type="tUInt32" />
+  </struct>
+  <struct alignment="1" name="tAction" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="filterID" type="tUInt32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" name="subAction" type="tActionSub" />
+  </struct>
+  <struct alignment="1" name="tActionStruct" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="action_1" type="tAction" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="10" name="action_2" type="tAction" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="20" name="action_3" type="tAction" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="30" name="action_4" type="tAction" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="40" name="action_5" type="tAction" />
+  </struct>
+  <struct alignment="1" name="tTrafficSign" version="1">
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" name="signID" type="tUInt32" />
+   <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" name="distance" type="tFloat32" />
+  </struct>
+ </structs>
+ <streams />
+</adtf:ddl>

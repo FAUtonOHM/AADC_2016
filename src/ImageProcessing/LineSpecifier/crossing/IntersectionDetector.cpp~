@@ -1,0 +1,261 @@
+/**
+ * IntersectionDetector.cpp
+ *
+ *  Created on: 08.02.2016
+ *      Author: schoen
+ */
+
+#include "IntersectionDetector.h"
+#include "ImageProcessingUtils.h"
+#include <algorithm>
+
+using namespace cv;
+
+const int IntersectionDetector::DISTANCE_THICK_THIN_LINE_CROSSING = METER_TO_PIXEL(0.465);
+const int IntersectionDetector::DISTANCE_ADJACENT_SIGN = METER_TO_PIXEL(1.18);
+const int IntersectionDetector::DISTANCE_OPPOSITE_SIGN = METER_TO_PIXEL(0.83);
+const int IntersectionDetector::RIGHT_LINE_END_SEARCH_RANGE = METER_TO_PIXEL(0.4);
+const int IntersectionDetector::SIGN_DISTANCE_EMERGENCY_STOP = METER_TO_PIXEL(2.3);
+
+IntersectionDetector::IntersectionDetector() {
+	debugEnabled = false;
+	binaryImageSize = Rect(0,0, BINARY_IMAGE_WIDTH, BINARY_IMAGE_HEIGHT);
+
+	vDetectorRight_rot = new LineDetector_Vertical(10, 4, 5);
+	vDetectorRight_rot->SetColor(Scalar(0, 255, 0));
+
+	vDetectorMiddle_Splitted = new LineDetector_Vertical(5, 3, 8);
+}
+
+IntersectionDetector::~IntersectionDetector() {
+	delete vDetectorRight_rot;
+	delete vDetectorMiddle_Splitted;
+}
+
+bool IntersectionDetector::DetectCrossingLine(Mat &input, Mat *debugImage) {
+	if(!debugEnabled) {
+		debugImage = 0;
+	}
+
+	CVMath::LineSegment lowerHori;
+
+	bool foundLowerHori = false;
+	hDetector.SetParameter(50, 20, LineDetector_Horizontal::INITIAL_REGION_HEIGHT, LineDetector_Horizontal::INITIAL_STEP_INCREASE);
+	if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.25), BINARY_IMAGE_HEIGHT - METER_TO_PIXEL(0.30), &lowerHori)) {
+		foundLowerHori = true;
+	}
+
+	if(!foundLowerHori) {
+		if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.25), BINARY_IMAGE_HEIGHT - METER_TO_PIXEL(0.60), &lowerHori)) {
+			foundLowerHori = true;
+		}
+	}
+
+	if(!foundLowerHori) {
+		if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.25), BINARY_IMAGE_HEIGHT - METER_TO_PIXEL(0.90), &lowerHori)) {
+			foundLowerHori = true;
+		}
+	}
+
+	if(foundLowerHori && lowerHori.direction.x < 0.939) { // cos(20) = 0.939
+		foundLowerHori = false;
+	}
+
+	if (debugImage && foundLowerHori) {
+		line(*debugImage, lowerHori.start, lowerHori.end, Scalar(255, 100, 0), 2, 4);
+	}
+
+	if(foundLowerHori && cv::norm(lowerHori.start - lowerHori.end) > METER_TO_PIXEL(0.4)) {
+		return true;
+	}
+
+	bool foundUpperHori = false;
+	CVMath::LineSegment upperHori;
+	hDetector.SetParameter(30, 20, LineDetector_Horizontal::INITIAL_REGION_HEIGHT, LineDetector_Horizontal::INITIAL_STEP_INCREASE);
+	if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.25), lowerHori.start.y - DISTANCE_THICK_THIN_LINE_CROSSING, &upperHori)) {
+		if(cv::norm(upperHori.start - upperHori.end) > METER_TO_PIXEL(0.4)) {
+			if(upperHori.direction.x > 0.939) { // cos(20) = 0.939
+				foundUpperHori = true;
+			}
+		}
+
+		if (!foundUpperHori) {
+			hDetector.SetParameter(30, 20, 50, LineDetector_Horizontal::INITIAL_STEP_INCREASE);
+			if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.25), std::min(upperHori.start.y,upperHori.end.y) + 30, &upperHori)) {
+				if(cv::norm(upperHori.start - upperHori.end) > METER_TO_PIXEL(0.4)) {
+					if(upperHori.direction.x > 0.939) { // cos(20) = 0.939
+						foundUpperHori = true;
+					}
+				}
+			}
+		}
+	}
+
+	if (!foundLowerHori && !foundUpperHori) {
+		hDetector.SetParameter(50, 20, LineDetector_Horizontal::INITIAL_REGION_HEIGHT, LineDetector_Horizontal::INITIAL_STEP_INCREASE);
+		if(hDetector.Detect_Right(input, debugImage, BINARY_IMAGE_WIDTH / 2 - METER_TO_PIXEL(0.5), BINARY_IMAGE_HEIGHT - (LineDetector_Horizontal::INITIAL_REGION_HEIGHT >> 1), &upperHori)) {
+			if(cv::norm(upperHori.start - upperHori.end) > METER_TO_PIXEL(0.4)) {
+				if(upperHori.direction.x > 0.939) { // cos(20) = 0.939
+					foundUpperHori = true;
+				}
+			}
+		}
+	}
+
+
+	if (debugImage && foundUpperHori) {
+		line(*debugImage, upperHori.start, upperHori.end, Scalar(255, 100, 0), 2, 4);
+	}
+
+	if(foundUpperHori) {
+		return true;
+	}
+
+	return false;
+}
+
+
+bool IntersectionDetector::DetectStraightLine(Mat &input, Mat *debugImage) {
+	if(!debugEnabled) {
+		debugImage = 0;
+	}
+
+	int yStart = BINARY_IMAGE_HEIGHT - 3;
+	int xStart = BINARY_IMAGE_WIDTH / 2 + METER_TO_PIXEL(0.25);
+
+	CVMath::LineSegment vert;
+
+	bool foundVert = false;
+	if(vDetector.Detect_Up(input, debugImage, xStart, yStart, &vert)) {
+		foundVert = true;
+	}
+
+	if (debugImage && foundVert) {
+		line(*debugImage, vert.start, vert.end, Scalar(255, 100, 0), 2, 4);
+	}
+
+	return foundVert;
+}
+
+cv::Point2f IntersectionDetector::DetectIntersection(Mat &input, Mat *debugImage, float imageRoadSignDistance, float imageNearPlaneDistance, Point2f *yawDirection) {
+	if(!debugEnabled) {
+		debugImage = 0;
+	}
+
+	int yStart = BINARY_IMAGE_HEIGHT - 3;
+	int xStart = BINARY_IMAGE_WIDTH / 2 + METER_TO_PIXEL(0.25);
+
+	CVMath::LineSegment right;
+
+	bool foundRight = false;
+	if(vDetector.Detect_Up(input, debugImage, xStart, yStart, &right)) {
+		foundRight = true;
+	}
+
+	if(!foundRight) {
+		int yStart = BINARY_IMAGE_HEIGHT - 10;
+		int xStart = BINARY_IMAGE_WIDTH / 2 + METER_TO_PIXEL(0.28);
+
+		if(vDetectorRight_rot->DetectSplitted_Up(input, debugImage,xStart, yStart, &right)) {
+			foundRight = true;
+		}
+	}
+
+	if(!foundRight) {
+		int yStart = BINARY_IMAGE_HEIGHT - 20;
+		int xStart = BINARY_IMAGE_WIDTH / 2 + METER_TO_PIXEL(0.31);
+
+		vDetectorRight_rot->SetParameter(50, 20, 100, 3);
+		if(vDetectorRight_rot->DetectSplitted_Up(input, debugImage,xStart, yStart, &right)) {
+			foundRight = true;
+		}
+	}
+
+	if(!foundRight) {
+		return Point2f(0,0);
+	}
+
+	bool foundMiddleLine = false;
+	CVMath::LineSegment middle;
+
+	if(foundRight) {
+		int yStart = BINARY_IMAGE_HEIGHT - 3;
+		int xStart = right.start.x - METER_TO_PIXEL(0.465);
+		vDetectorMiddle_Splitted->SetParameter(50, 20, METER_TO_PIXEL(0.1), LineDetector_Vertical::INITIAL_STEP_INCREASE);
+		if(vDetectorMiddle_Splitted->DetectSplitted_Up(input, debugImage, xStart, yStart, &middle)) {
+			foundMiddleLine = true;
+		}
+
+		if(!foundMiddleLine) {
+			int yStart = BINARY_IMAGE_HEIGHT - 45;
+			int xStart = right.start.x - METER_TO_PIXEL(0.465);
+			vDetectorMiddle_Splitted->SetParameter(50, 20, METER_TO_PIXEL(0.1), LineDetector_Vertical::INITIAL_STEP_INCREASE);
+			if(vDetectorMiddle_Splitted->DetectSplitted_Up(input, debugImage, xStart, yStart, &middle)) {
+				foundMiddleLine = true;
+			}
+		}
+	}
+
+	if (debugImage ) {
+		if (right.Valid()) {
+			right.Draw(debugImage, Scalar(255, 100, 0));
+		}
+		if (middle.Valid()) {
+			middle.Draw(debugImage, Scalar(255, 100, 0));
+		}
+	}
+
+	float adjacentCarDistance = cv::sqrt(imageRoadSignDistance * imageRoadSignDistance - DISTANCE_OPPOSITE_SIGN * DISTANCE_OPPOSITE_SIGN);
+	int searchY = BINARY_IMAGE_HEIGHT - adjacentCarDistance + imageNearPlaneDistance + DISTANCE_ADJACENT_SIGN;
+
+	if(abs(right.end.y - searchY) < RIGHT_LINE_END_SEARCH_RANGE) {
+		Rect roi = Rect(right.end.x - METER_TO_PIXEL(0.1), right.end.y - METER_TO_PIXEL(0.19), METER_TO_PIXEL(0.20), METER_TO_PIXEL(0.11));
+		roi &= binaryImageSize;
+
+		if(debugImage) {
+			cv::rectangle(*debugImage, roi, Scalar(0, 0, 255), 1, 8);
+		}
+
+		int whitePixel = cv::sum(input(roi))[0];
+		int whiteMax = 5 * roi.height * 255;
+
+		if(whitePixel < whiteMax && roi.width > 3) {
+			Point2f step;
+			Point2f stop;
+			if(foundMiddleLine) {
+				step = CVMath::RotateCW90(right.direction);
+				float distance = abs(middle.distance - right.distance);
+				stop = right.end + step * distance * 0.5;
+			} else {
+				step = CVMath::RotateCW90(right.direction);
+				stop = right.end + step * METER_TO_PIXEL(0.23);
+			}
+
+			if (debugEnabled) {
+				circle(*debugImage, stop, 7.0, Scalar(0, 0, 255), 2, 8);
+				line(*debugImage, stop, stop + 20 * right.direction, Scalar(255, 0, 0), 2);
+			}
+
+			if(foundMiddleLine) {
+				float weight = right.length + middle.length;
+				*yawDirection = (right.length * right.direction + middle.length * middle.direction) / weight;
+			} else {
+				*yawDirection = right.direction;
+			}
+			return stop;
+		}
+	} else {
+		if(imageRoadSignDistance < SIGN_DISTANCE_EMERGENCY_STOP) {
+			//TODO: workaround, no lines detected. stop with the distance of the sign
+			Point2f stop = Point2f(BINARY_IMAGE_WIDTH / 2, BINARY_IMAGE_HEIGHT);
+			*yawDirection = right.direction;
+
+			if (debugEnabled) {
+				circle(*debugImage, stop, 7.0, Scalar(0, 0, 255), 2, 8);
+				line(*debugImage, stop, stop + 20 * right.direction, Scalar(255, 0, 0), 2);
+			}
+			return stop;
+		}
+	}
+	return Point2f(0,0);
+}

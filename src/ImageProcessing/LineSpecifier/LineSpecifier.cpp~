@@ -1,0 +1,442 @@
+/**
+ * LineSpecifier.cpp
+ *
+ *      Author: schoen
+ */
+
+#include "LineSpecifier.h"
+#include "LineTemplateGenerator.h"
+
+using namespace cv;
+
+const bool LineSpecifier::turnRightMiddle_adjustLineWidth = false;
+const bool LineSpecifier::turnLeft_adjustLineWidth = false;
+const bool LineSpecifier::turnRightOuterLeft_adjustLineWidth = false;
+const bool LineSpecifier::turnRightInnerRight_adjustLineWidth = false;
+
+LineSpecifier::LineSpecifier() {
+	lastPoint = cv::Point2f(150, 300);
+	lastWeight = 1;
+	debugEnabled = false;
+	firstPoint = true;
+
+	lastLaneWidth = LineTemplateGenerator::AVERAGE_LANE_WIDTH;
+}
+
+void LineSpecifier::Init() {
+	lastPoint = cv::Point2f(150, 300);
+	lastWeight = 1;
+	debugEnabled = false;
+	firstPoint = true;
+	lastLaneWidth = LineTemplateGenerator::AVERAGE_LANE_WIDTH;
+
+	InitStraight();
+	InitRightTurn();
+	InitLeftTurn();
+}
+
+void LineSpecifier::InitStraight() {
+	int index = 0, size = 0;
+	LineTemplate first;
+
+	////////////////////////////////////////////////////
+	index = 0, size = 4;
+	first.roi = Rect(60, 282, 100, 16);
+	first.lineCenter = Point2f(4.5, 7.5);
+	LineTemplateGenerator::GenerateStraight(straightMiddle, first, Point2f(0, -7), index, size, 4,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+
+	first.roi = Rect(150, 282, 90, 16);
+	first.lineCenter = Point2f(25.5, 7.5);
+	LineTemplateGenerator::GenerateStraight(straightRight, first, Point2f(0, -7), index, size, 6,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE);
+
+	index += size;
+
+	////////////////////////////////////////////////////
+	// put some blurred versions of the straight lines
+	size = 4;
+	for (int i = 0; i < size; i++) {
+		LineTemplate temp (Mat::zeros(16, 48, CV_8UC1), 32, 0.25);
+		straightMiddle.push_back(temp);
+		straightRight.push_back(temp);
+	}
+
+	first.roi = Rect(70, 282, 80, 16);
+	first.lineCenter = Point2f(6.5, 7.5);
+	LineTemplateGenerator::GenerateStraight(straightMiddle, first, Point2f(0, -7), index, size, 6,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+
+	first.roi = Rect(150, 282, 80, 16);
+	first.lineCenter = Point2f(39.5, 7.5);
+	LineTemplateGenerator::GenerateStraight(straightRight, first, Point2f(0, -7), index, size, 8,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE);
+}
+
+void LineSpecifier::InitRightTurn() {
+	int index = 0, size = 0;
+	LineTemplate first;
+
+	turnRightMiddle.resize(10);
+
+	first.roi = Rect(100, 272, 100, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 10, 1.5, 4, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+	index += size;
+
+	first.roi = Rect(110, 282, 100, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 5;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 25, 1.5, 4, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+	index += size;
+
+	first.roi = Rect(120, 282, 100, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 40, 1.5, 4, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+	index += size;
+
+	first.roi = Rect(130, 282, 100, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 3;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 50, 1.5, 4, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+	index += size;
+
+	first.roi = Rect(140, 282, 100, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 3;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 55, 1.5, 4, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE);
+	index += size;
+
+	///////////////////////////////////////////////
+	index = 0, size = 0;
+	first.roi = Rect(170, 272, 70, 16);
+	first.lineCenter = Point2f(32 - 8, 8);
+	size = 6;
+	LineTemplateGenerator::Generate(turnRightInnerRight, first, index, size, 30, 1, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH - 20);
+	index += size;
+
+	first.roi = Rect(180, 272, 70, 16);
+	first.lineCenter = Point2f(32 - 8, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnRightInnerRight, first, index, size, 20, 1, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH - 20);
+	index += size;
+
+	///////////////////////////////////////////////
+	// right turn outer left thick line 6cm
+	index = 0, size = 0;
+	int y = 0;
+
+	y = 235;
+	first.roi = Rect(25, y, 80, 16);
+	first.lineCenter = Point2f(8, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnRightOuterLeft, first, index, size, 10, 2, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH * 3 + 10, 280 - y);
+	index += size;
+
+	y = 260;
+	first.roi = Rect(25, y, 80, 16);
+	first.lineCenter = Point2f(9, 8);
+	size = 5;
+	LineTemplateGenerator::Generate(turnRightOuterLeft, first, index, size, 20, 2, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH * 3 + 10, 280 - y);
+	index += size;
+
+	y = 275;
+	first.roi = Rect(35, y, 80, 16);
+	first.lineCenter = Point2f(10, 8);
+	size = 5;
+	LineTemplateGenerator::Generate(turnRightOuterLeft, first, index, size, 30, 2, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH * 3 + 10, 280 - y);
+	index += size;
+
+	//////////////////////////////////////////
+	//generate some blurred versions
+
+	/*
+	 * TODO: removed blurred versions
+
+	index = turnRightMiddle.size(), size = 4;
+	for (int i = 0; i < size; i++) {
+		LineTemplate temp(Mat::zeros(16, 48, CV_8UC1), 32, 0.25);
+		turnRightMiddle.push_back(temp);
+	}
+	first.roi = Rect(100, 272, 100, 16);
+	first.lineCenter = Point2f(9, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnRightMiddle, first, index, size, 10, 1.5, 6, LineTemplateGenerator::RIGHT,
+			LineTemplateGenerator::LINE_ON_LEFT_SIDE); //blurred line not 2cm thick
+	index += size;
+	*/
+}
+
+void LineSpecifier::InitLeftTurn() {
+	// turn left outer right line 6cm
+	int index = 0, size = 0;
+	LineTemplate first;
+
+	first.roi = Rect(120, 282, 90, 16);
+	first.lineCenter = Point2f(32 - 8, 8);
+	size = 5;
+	LineTemplateGenerator::Generate(turnLeft, first, index, size, 180 - 10, 1.5, 6, LineTemplateGenerator::LEFT,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH - 10);
+	index += size;
+
+	first.roi = Rect(110, 282, 90, 16);
+	first.lineCenter = Point2f(32 - 8, 8);
+	size = 5;
+	LineTemplateGenerator::Generate(turnLeft, first, index, size, 180 - 25, 1.5, 6, LineTemplateGenerator::LEFT,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH - 10);
+	index += size;
+
+	first.roi = Rect(100, 282, 90, 16);
+	first.lineCenter = Point2f(32 - 8, 8);
+	size = 4;
+	LineTemplateGenerator::Generate(turnLeft, first, index, size, 180 - 35, 1.5, 6, LineTemplateGenerator::LEFT,
+			LineTemplateGenerator::LINE_ON_RIGHT_SIDE, LineTemplateGenerator::AVERAGE_LANE_WIDTH - 10);
+	index += size;
+}
+
+LineSpecifier::~LineSpecifier() {
+
+}
+
+void LineSpecifier::DetermineDestinationPoint(cv::Mat& in, cv::Mat& out, cv::Point2f * dest, float * probability) {
+	Mat inAsFloat = in;
+
+	bool matched = false;
+
+	for (unsigned int i = 0; i < straightRight.size(); i++) {
+		matched = straightRight[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&straightRight[i], Scalar(0, 255, 0), out);
+		}
+	}
+
+	for (unsigned int i = 0; i < straightMiddle.size(); i++) {
+		matched = straightMiddle[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&straightMiddle[i], Scalar(0, 255, 0), out);
+		}
+	}
+
+	for (unsigned int i = 0; i < turnRightMiddle.size(); i++) {
+		matched = turnRightMiddle[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&turnRightMiddle[i], Scalar(0, 255, 255), out);
+		}
+	}
+
+	for (unsigned int i = 0; i < turnRightInnerRight.size(); i++) {
+		matched = turnRightInnerRight[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&turnRightInnerRight[i], Scalar(0, 255, 255), out);
+		}
+	}
+
+	for (unsigned int i = 0; i < turnRightOuterLeft.size(); i++) {
+		matched = turnRightOuterLeft[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&turnRightOuterLeft[i], Scalar(255, 0, 0), out);
+		}
+	}
+
+	for (unsigned int i = 0; i < turnLeft.size(); i++) {
+		matched = turnLeft[i].Match(inAsFloat);
+		if (matched && debugEnabled) {
+			PrintRectangle(&turnLeft[i], Scalar(0, 0, 255), out);
+		}
+	}
+
+	//adjust lane width near distance
+	Point2f lineRight, lineMiddle;
+	float totalProbabilityRight = 0;
+	float totalProbabilityMiddle = 0;
+
+	for (unsigned int i = 0; i < straightRight.size(); i++) {
+		totalProbabilityRight += straightRight[i].probability;
+	}
+
+	for (unsigned int i = 0; i < straightMiddle.size(); i++) {
+		totalProbabilityMiddle += straightMiddle[i].probability;
+	}
+
+	if (totalProbabilityRight > 0 && totalProbabilityMiddle > 0
+			&& abs(totalProbabilityRight - totalProbabilityMiddle) < 0.5) {
+		for (unsigned int i = 0; i < straightRight.size(); i++) {
+			lineRight += (straightRight[i].matchLocation + straightRight[i].lineCenter) * straightRight[i].probability;
+		}
+
+		for (unsigned int i = 0; i < straightMiddle.size(); i++) {
+			lineMiddle += (straightMiddle[i].matchLocation + straightMiddle[i].lineCenter)
+					* straightMiddle[i].probability;
+		}
+
+		lineRight /= totalProbabilityRight;
+		lineMiddle /= totalProbabilityMiddle;
+
+		float laneWidth = abs(lineRight.x - lineMiddle.x);
+
+		//set some limits
+		if (laneWidth < LineTemplateGenerator::AVERAGE_LANE_WIDTH - 15) {
+			laneWidth = LineTemplateGenerator::AVERAGE_LANE_WIDTH - 15;
+		} else if (laneWidth > LineTemplateGenerator::AVERAGE_LANE_WIDTH + 15) {
+			laneWidth = LineTemplateGenerator::AVERAGE_LANE_WIDTH + 15;
+		}
+
+		//skip calculations
+		if (abs(lastLaneWidth - laneWidth) > 5) {
+			laneWidth *= 0.5;
+
+			for (unsigned int i = 0; i < straightRight.size(); i++) {
+				straightRight[i].AdjustLaneWidth(laneWidth);
+			}
+
+			for (unsigned int i = 0; i < straightMiddle.size(); i++) {
+				straightMiddle[i].AdjustLaneWidth(laneWidth);
+			}
+
+			if (turnRightMiddle_adjustLineWidth) {
+				for (unsigned int i = 0; i < turnRightMiddle.size(); i++) {
+					turnRightMiddle[i].AdjustLaneWidth(laneWidth);
+				}
+			}
+
+			if (turnRightInnerRight_adjustLineWidth) {
+				for (unsigned int i = 0; i < turnRightInnerRight.size(); i++) {
+					turnRightInnerRight[i].AdjustLaneWidth(laneWidth);
+				}
+			}
+
+			if (turnLeft_adjustLineWidth) {
+				for (unsigned int i = 0; i < turnLeft.size(); i++) {
+					turnLeft[i].AdjustLaneWidth(laneWidth);
+				}
+			}
+
+			if (turnRightOuterLeft_adjustLineWidth) {
+				for (unsigned int i = 0; i < turnRightOuterLeft.size(); i++) {
+					turnRightOuterLeft[i].AdjustLaneWidth(laneWidth);
+				}
+			}
+		}
+	}
+
+	int count_straight_middle = 0;
+	int count_straight_right = 0;
+	int count_right = 0;
+	int count_Left = 0;
+
+	float probability_straight = 0.0;
+	float probability_right = 0.0;
+	float probability_left = 0.0;
+	float probability_blurred = 0.0;
+
+	Point2f pStraight = Point2f(0, 0);
+	Point2f pLeft = Point2f(0, 0);
+	Point2f pRight = Point2f(0, 0);
+	Point2f pBlurred = Point2f(0, 0);
+
+
+	Sum(straightRight, pStraight, probability_straight, count_straight_right);
+	Sum(straightMiddle, pStraight, probability_straight, count_straight_middle);
+	Sum(turnRightMiddle, pRight, probability_right, count_right);
+	Sum(turnRightInnerRight, pRight, probability_right, count_right);
+	Sum(turnRightOuterLeft, pRight, probability_right, count_right);
+	Sum(turnLeft, pLeft, probability_left, count_Left);
+
+	if (probability_straight > 0) {
+		if (float(count_Left) / turnLeft.size()
+				> float(count_straight_right + count_straight_middle)
+						/ (straightRight.size() + straightMiddle.size())) {
+			//give matched straight lines a lower weight if we are probably in a left turn
+			pStraight /= 3;
+			probability_straight /= 3;
+		}
+
+		if (count_straight_middle == 0 && count_straight_right > 0 && count_Left >= 3) {
+			//give matched straight lines a lower weight if we are probably in a left turn
+			pStraight /= 5;
+			probability_straight /= 5;
+		}
+	}
+
+	float totalProbability = probability_straight + probability_right + probability_left + probability_blurred;
+	float currentWeight = totalProbability;
+	Point2f res = pStraight + pRight + pLeft + pBlurred;
+
+	if (totalProbability > 0) {
+		res /= totalProbability;
+	}
+
+	if (firstPoint && res.x > 1 && res.y > 1) {
+		lastPoint = res;
+		firstPoint = false;
+	} else if (res.x > 1 && res.y > 1) {
+		float sum = lastWeight + currentWeight;
+		if (sum > 0) {
+			lastPoint = (currentWeight * res + lastWeight * lastPoint) / sum;
+		}
+
+		lastWeight = currentWeight;
+	} else {
+		lastWeight = 0;
+	}
+
+	if (debugEnabled) {
+		line(out, Point(0, 100), Point(10, 100), Scalar(0, 255, 0));
+		line(out, Point(0, 200), Point(10, 200), Scalar(0, 255, 0));
+		line(out, Point(0, 300), Point(10, 300), Scalar(0, 255, 0));
+		line(out, Point(100, 0), Point(100, 10), Scalar(0, 255, 0));
+		line(out, Point(200, 0), Point(200, 10), Scalar(0, 255, 0));
+		circle(out, lastPoint, 2.0, Scalar(0, 255, 0), 1, 8);
+	}
+
+	*dest = lastPoint;
+	int div = count_Left + count_right;
+	*probability = 2.0*lastWeight / (div > 1 ? div : 1); // average probability 0.5 so multiply weight with 2
+
+	if(*probability > 1) {
+		*probability = 1;
+	}
+}
+
+CVMath::Line LineSpecifier::GetRightLine() {
+	int size = straightRight.size();
+	for(int i = 0; i < size; i++) {
+		if(straightRight[i].matchedLastTime) {
+
+		}
+	}
+	return CVMath::Line();
+}
+
+void LineSpecifier::Sum(std::vector<LineTemplate> &temps, Point2f &result, float &totalProbability, int &matchCount) {
+	for (unsigned int i = 0; i < temps.size(); i++) {
+		if (temps[i].probability > 0) {
+			result += temps[i].GetAbsoluteLaneLocation() * temps[i].probability;
+			totalProbability += temps[i].probability;
+			matchCount++;
+		}
+	}
+}
+
+void LineSpecifier::PrintRectangle(LineTemplate * temp, Scalar color, Mat &debugImage) {
+	Point2f matchLoc = temp->matchLocation;
+	int thickness = temp->probability * 5.0;
+	rectangle(debugImage, matchLoc, Point(matchLoc.x + temp->image.cols, matchLoc.y + temp->image.rows), color,
+			thickness, 8, 0);
+	line(debugImage, Point(temp->roi.x, temp->roi.y), Point(temp->roi.x, temp->roi.y + temp->roi.height), color);
+	line(debugImage, Point(temp->roi.x + temp->roi.width, temp->roi.y),
+			Point(temp->roi.x + temp->roi.width, temp->roi.y + temp->roi.height), color);
+}
+

@@ -1,0 +1,3 @@
+add_subdirectory(LightMessageLogger)
+add_subdirectory(LightMessageReceiver)
+add_subdirectory(LightMessageTransmitter)
