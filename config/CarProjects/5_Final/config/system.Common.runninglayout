@@ -1,0 +1,12 @@
+<adtf:export xmlns:adtf="adtf">
+ <folder name="Main">
+  <folder name="components">
+   <folder filter_tree_expanded_list="" name="FilterTraceView" />
+   <folder column_size_config_header_size_0="293" column_size_config_header_size_1="100" column_size_config_header_size_2="100" column_size_config_header_size_3="100" column_size_config_header_size_4="153" header_state_config="AAAA/wAAAAAAAAABAAAAAQAAAAUBAAAAAAAAAAAAAAAAAAAAAAAAAuoAAAAFAQEAAQAAAAAAAAAAAAAAAGT/////AAAAgQAAAAAAAAADAAABJQAAAAEAAAAAAAABLAAAAAMAAAAAAAAAmQAAAAEAAAAA" name="watchdog_filter_layout" />
+  </folder>
+  <folder name="windows">
+   <folder Floating="true" Height="998" Maximized="true" PosX="0" PosY="52" Visible="true" Width="1680" name="Signal_View" />
+   <folder Height="405" PosX="20" PosY="0" Visible="true" Width="548" name="Video_Display" />
+  </folder>
+ </folder>
+</adtf:export>

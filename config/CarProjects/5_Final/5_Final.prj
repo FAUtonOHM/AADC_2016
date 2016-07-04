@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<project name="LineSpecifierTest" version="2.0">
+ <folder desc="Configuration Files" expand="" name="Configuration" path="config" type="config">
+  <file name="System Configuration" path=".\config\system.xml" type="config/sys" />
+ </folder>
+ <folder active="true" desc="Tasks" expand="*.dat" name="Captured Files" path="files" type="capture" />
+ <file name="log_finalProject.dat" path="../../../records/2016_02_15/log_finalProject.dat" type="capture/datfile" />
+</project>
